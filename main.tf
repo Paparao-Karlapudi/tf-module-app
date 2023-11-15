@@ -45,7 +45,12 @@ resource "aws_iam_policy" "policy" {
           "ssm:GetParameters",
           "ssm:GetParameter"
         ],
-        "Resource": "arn:aws:ssm:us-east-1:588365094154:parameter/${var.env}.${var.component}*"
+        "Resource": [
+          "arn:aws:ssm:us-east-1:588365094154:parameter/${var.env}.${var.component}*",
+          "arn:aws:ssm:us-east-1:588365094154:parameter/nexus*"
+
+
+        ]
       },
       {
         "Sid": "VisualEditor1",
@@ -95,15 +100,19 @@ resource "aws_security_group" "main" {
 
 }
 
-resource "aws_launch_template" "apps" {
-  name_prefix   = "${var.env}-${var.component}"
+
+resource "aws_launch_template" "main" {
+  name   = "${var.env}-${var.component}"
   image_id      = data.aws_ami.centos8.id
   instance_type = var.instance_type
   vpc_security_group_ids = [aws_security_group.main.id]
   iam_instance_profile {
     arn = aws_iam_instance_profile.profile.arn
   }
+  user_data =  base64encode(templatefile("${path.module}/user_data.sh", {component = var.component, env= var.env}))
 }
+
+
 
 resource "aws_autoscaling_group" "apps" {
   name                      = "${var.env}-${var.component}-template"
