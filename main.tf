@@ -1,14 +1,51 @@
+resource "aws_iam_role" "role" {
+  name = "${var.env}-${var.component}-role"
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      },
+    ]
+  })
+  tags = merge(local.common_tags,
+    { Name = "${var.env}-${var.component}-role" } )
+
+}
+
+resource "aws_iam_instance_profile" "profile" {
+  name = "${var.env}-${var.component}-role"
+  role = aws_iam_role.role.name
+}
+
 resource "aws_security_group" "main" {
   name        = "${var.env}-${var.component}-security-group"
   description = "${var.env}-${var.component}-security-group"
   vpc_id      = var.vpc_id
 
   ingress {
-    description      = "RabbitMQ"
+    description      = "HTTP"
     from_port        = var.app_port
     to_port          = var.app_port
     protocol         = "tcp"
     cidr_blocks      = var.allow_cidr
+  }
+
+
+  ingress {
+    description      = "SSH"
+    from_port        = 22
+    to_port          = 22
+    protocol         = "tcp"
+    cidr_blocks      = var.bastion_cidr
   }
 
   egress {
@@ -26,6 +63,7 @@ resource "aws_launch_template" "apps" {
   name_prefix   = "${var.env}-${var.component}"
   image_id      = data.aws_ami.centos8.id
   instance_type = var.instance_type
+  vpc_security_group_ids = [aws_security_group.main.id]
 }
 
 resource "aws_autoscaling_group" "apps" {

@@ -8,3 +8,4 @@ variable "max_size" {}
 variable "min_size" {}
 variable "health_check_grace_period" {}
 variable "instance_type" {}
+variable "bastion_cidr" {}
